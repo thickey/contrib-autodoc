@@ -129,7 +129,7 @@ partial html data leaving a vector of nodes which we then wrap in a <div> tag"
 (defn see-also-links [ns]
   (if-let [see-also (seq (:see-also ns))]
     #(at %
-       [:span#see-also-link] 
+       [:span.see-also-link] 
        (clone-for [[link text] (process-see-also (:see-also ns))]
          (fn [t] 
            (at t
@@ -150,23 +150,23 @@ partial html data leaving a vector of nodes which we then wrap in a <div> tag"
 
 (defn namespace-overview [ns template]
   (at template
-    [:#namespace-tag] 
+    [:.namespace-tag] 
     (do->
      (set-attr :id (:short-name ns))
      (content (:short-name ns)))
-    [:#author] (content (or (:author ns) "unknown author"))
-    [:a#api-link] (set-attr :href (ns-html-file ns))
-    [:pre#namespace-docstr] (html-content (expand-links (:doc ns)))
-    [:span#var-link] (add-ns-vars ns)
-    [:span#subspace] (if-let [subspaces (seq (:subspaces ns))]
+    [:.author] (content (or (:author ns) "unknown author"))
+    [:a.api-link] (set-attr :href (ns-html-file ns))
+    [:pre.namespace-docstr] (html-content (expand-links (:doc ns)))
+    [:span.var-link] (add-ns-vars ns)
+    [:span.subspace] (if-let [subspaces (seq (:subspaces ns))]
                        (clone-for [s subspaces]
                          #(at % 
-                            [:span#name] (content (:short-name s))
-                            [:span#sub-var-link] (add-ns-vars s))))
-    [:span#see-also] (see-also-links ns)))
+                            [:span.subspace-name] (content (:short-name s))
+                            [:span.sub-var-link] (add-ns-vars s))))
+    [:span.see-also] (see-also-links ns)))
 
 (deffragment make-overview-content *overview-file* [ns-info]
-  [:div#namespace-entry] (clone-for [ns ns-info] #(namespace-overview ns %)))
+  [:div.namespace-entry] (clone-for [ns ns-info] #(namespace-overview ns %)))
 
 (deffragment make-master-toc *master-toc-file* [ns-info]
   [:ul#left-sidebar-list :li] (clone-for [ns ns-info]
@@ -230,14 +230,14 @@ actually changed). This reduces the amount of random doc file changes that happe
 ;;; TODO: factor out var from namespace and sub-namespace into a separate template.
 (defn var-details [ns v template]
   (at template 
-    [:#var-tag] 
+    [:.var-tag] 
     (do->
      (set-attr :id (var-tag-name ns v))
      (content (:name v)))
-    [:span#var-type] (content (:var-type v))
-    [:pre#var-usage] (content (var-usage v))
-    [:pre#var-docstr] (html-content (expand-links (:doc v)))
-    [:a#var-source] (set-attr :href (var-src-link v))))
+    [:span.var-type] (content (:var-type v))
+    [:pre.var-usage] (content (var-usage v))
+    [:pre.var-docstr] (html-content (expand-links (:doc v)))
+    [:a.var-source] (set-attr :href (var-src-link v))))
 
 (declare render-namespace-api)
 
@@ -246,14 +246,14 @@ actually changed). This reduces the amount of random doc file changes that happe
 
 (defn render-namespace-api [template-file ns external-docs]
   (with-template template-file
-    [:#namespace-name] (content (:short-name ns))
-    [:span#author] (content (or (:author ns) "Unknown"))
-    [:span#long-name] (content (:full-name ns))
-    [:pre#namespace-docstr] (html-content (expand-links (:doc ns)))
-    [:span#see-also] (see-also-links ns)
-    [:span#external-doc] (external-doc-links ns external-docs)
-    [:div#var-entry] (clone-for [v (:members ns)] #(var-details ns v %))
-    [:div#sub-namespaces]
+    [:.namespace-name] (content (:short-name ns))
+    [:span.author] (content (or (:author ns) "Unknown"))
+    [:span.long-name] (content (:full-name ns))
+    [:pre.namespace-docstr] (html-content (expand-links (:doc ns)))
+    [:span.see-also] (see-also-links ns)
+    [:span.external-doc] (external-doc-links ns external-docs)
+    [:div.var-entry] (clone-for [v (:members ns)] #(var-details ns v %))
+    [:div.sub-namespaces]
     (clone-for [sub-ns (:subspaces ns)]
       (fn [_] (render-namespace-api *sub-namespace-api-file* sub-ns external-docs)))))
 
@@ -295,7 +295,7 @@ vars in ns-info that begin with that letter"
                (set-attr :href
                          (str (ns-html-file ns) "#" (:full-name ns) "/" (:name v)))
                (content (:name v)))
-         [:#line-content] (content 
+         [:.line-content] (content 
                            (cl-format nil "~vt~a~vt~a~vt~a~%"
                                       (- 29 overhead)
                                       (:var-type v) (- 43 overhead)
@@ -305,11 +305,11 @@ vars in ns-info that begin with that letter"
 ;; TODO: skip entries for letters with no members
 (deffragment make-index-content *index-html-file* [vars-by-letter]
   [:span.project-name-span] (content *page-title*)
-  [:div#index-body] (clone-for [[letter vars] vars-by-letter]
+  [:div.index-body] (clone-for [[letter vars] vars-by-letter]
                       #(at %
                          [:h2] (set-attr :id letter)
-                         [:span#section-head] (content letter)
-                         [:span#section-content] (clone-for [[v ns] vars]
+                         [:span.section-head] (content letter)
+                         [:span.section-content] (clone-for [[v ns] vars]
                                                    (gen-index-line v ns)))))
 
 (defn make-index-html [ns-info master-toc]

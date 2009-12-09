@@ -26,10 +26,10 @@
   <!-- Properties that define where various resources are that we need -->
 	<property name="clojure-jar" location="../clojure/clojure.jar"/>
   <property name="enlive-src" location="../enlive/src"/>
-  <property name="tagsoup-jar" location="/home/tom/.clojure/tagsoup-1.2.jar"/>
-	<property name="clojure-json-jar" location="${user.home}/.clojure/clojure-json.jar"/>
-  <property name="ant-jar" location="/usr/share/ant/lib/ant.jar"/>
-  <property name="ant-launcher-jar" location="/usr/share/ant/lib/ant-launcher.jar"/>
+  <property name="tagsoup-jar" location="../enlive/lib/tagsoup-1.2.jar"/>
+	<property name="clojure-json-jar" location="../clojure/clojure-json/clojure-json.jar"/>
+  <property name="ant-jar" location="${user.home}/.ant/lib/ant.jar"/>
+  <property name="ant-launcher-jar" location="${user.home}/.ant/lib/ant-launcher.jar"/>
   <property name="doc-tmp" value="/tmp/autodoc"/>
 
   <!-- When building doc for clojure-core we override this in params.
@@ -127,7 +127,7 @@
     <ant dir="${param-dir}" inheritAll="true"/>
 	</target>
 
-  <!-- Build the documention stored in the extra doc directory -->
+  <!-- Build the documentation stored in the extra doc directory -->
   <target name="clean-doc"
           description="Delete existing doc files">
     <delete dir="${output-dir}/doc"/>
@@ -211,7 +211,7 @@
   <target name="commit-result" depends="set-commit-comment,commit-html,update-last-commit"/>
     
   <target name="do-build" 
-          depends="build-src,build-html,commit-result"
+          depends="build-src,build-html"
           description="once everything is up-to-date, build the source, build the html, then commit the new documentation"/>
 
   <target name="main-build" depends="pull-src, set-is-uptodate"

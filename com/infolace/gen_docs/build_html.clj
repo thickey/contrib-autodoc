@@ -150,12 +150,12 @@ partial html data leaving a vector of nodes which we then wrap in a <div> tag"
 
 (defn namespace-overview [ns template]
   (at template
-    [:.namespace-tag] 
-    (do->
-     (set-attr :id (:short-name ns))
-     (content (:short-name ns)))
+    [:.namespace-tag] (set-attr :id (:short-name ns))
     [:.author] (content (or (:author ns) "unknown author"))
-    [:a.api-link] (set-attr :href (ns-html-file ns))
+    [:a.api-link] 
+    (do->
+     (set-attr :href (ns-html-file ns))
+     (content (:short-name ns)))
     [:pre.namespace-docstr] (html-content (expand-links (:doc ns)))
     [:span.var-link] (add-ns-vars ns)
     [:span.subspace] (if-let [subspaces (seq (:subspaces ns))]

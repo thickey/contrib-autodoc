@@ -28,8 +28,8 @@
   <property name="enlive-src" location="../enlive/src"/>
   <property name="tagsoup-jar" location="../enlive/lib/tagsoup-1.2.jar"/>
 	<property name="clojure-json-jar" location="../clojure/clojure-json/clojure-json.jar"/>
-  <property name="ant-jar" location="${user.home}/.ant/lib/ant.jar"/>
-  <property name="ant-launcher-jar" location="${user.home}/.ant/lib/ant-launcher.jar"/>
+  <property name="ant-jar" location="/usr/share/ant/lib/ant.jar"/>
+  <property name="ant-launcher-jar" location="/usr/share/ant/lib/ant-launcher.jar"/>
   <property name="doc-tmp" value="/tmp/autodoc"/>
 
   <!-- When building doc for clojure-core we override this in params.

@@ -232,9 +232,14 @@ actually changed). This reduces the amount of random doc file changes that happe
 ;;; TODO: factor out var from namespace and sub-namespace into a separate template.
 (defn var-details [ns v template]
   (at template 
+    [:.var-tag] 
     (do->
      (set-attr :id (var-tag-name ns v))
-     (content (:name v)))))
+     (content (:name v)))
+    [:span.var-type] (content (:var-type v))
+    [:pre.var-usage] (content (var-usage v))
+    [:pre.var-docstr] (content (expand-links (:doc v)))
+    [:a.var-source] (set-attr :href (var-src-link v))))
 
 (declare common-namespace-api)
 

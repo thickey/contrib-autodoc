@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [empty complement]) 
   (:import [java.util.jar JarFile]
            [java.io File FileWriter BufferedWriter])
-  (:require [clojure.contrib.str-utils2 :as str2])
-  (:use net.cgrand.enlive-html
+  (:require [clojure.contrib.str-utils :as str])
+  (:use [net.cgrand.enlive-html :exclude (deftemplate)]
         [clojure.contrib.pprint :only (cl-format)]
         [clojure.contrib.pprint.examples.json :only (print-json)]
         [clojure.contrib.pprint.utilities :only (prlabel)]
@@ -12,7 +12,8 @@
         [com.infolace.gen-docs.collect-info :only (contrib-info)]
         [com.infolace.gen-docs.params
          :only (*output-directory* *src-dir* *src-root* *web-src-dir* *web-home*
-                *external-doc-tmpdir* *param-dir* *page-title* *copyright*)]))
+                *external-doc-tmpdir* *param-dir* *page-title* *copyright*
+                *build-json-index*)]))
 
 (def *layout-file* "layout.html")
 (def *master-toc-file* "master-toc.html")
@@ -33,43 +34,44 @@ specific directory first, then in the base template directory."
       custom-template
       (str "templates/" base))))
 
-(defn get-template 
-  "Get the html node corresponding to this template file"
-  [base]
-  (first (html-resource (template-for base))))
+(def memo-nodes
+     (memoize
+      (fn [source]
+        (map annotate (select (html-resource (template-for source)) [:body :> any-node])))))
 
-(defn content-nodes 
-  "Strip off the <html><body>  ... </body></html> brackets that tag soup will add to
-partial html data leaving a vector of nodes which we then wrap in a <div> tag"
-  [nodes]
-  {:tag :div, :content (:content (first (:content (first nodes))))})
+(defmacro deffragment
+  [name source args & forms]
+  `(def ~name
+        (fn ~args
+          (let [nodes# (memo-nodes ~source)]
+            (flatmap (transformation ~@forms) nodes#)))))  
 
-(defmacro deffragment [name template-file args & body]
-  `(defn ~name ~args
-     (content-nodes
-      (at (get-template ~template-file)
-        ~@body))))
+(def memo-html-resource
+     (memoize
+      (fn [source]
+        (html-resource (template-for source)))))
 
-(defmacro with-template [template-file & body]
-  `(content-nodes
-    (at (get-template ~template-file)
-      ~@body)))
-
-;;; copied from enlive where this is private
-(defn- xml-str
- "Like clojure.core/str but escapes < > and &."
- [x]
-  (-> x str (.replace "&" "&amp;") (.replace "<" "&lt;") (.replace ">" "&gt;")))
+(defmacro deftemplate
+  "A template returns a seq of string:
+   Overridden from enlive to defer evaluation of the source until runtime.
+   Builds in \"template-for\""
+  [name source args & forms] 
+  `(def ~name
+        (comp emit* 
+              (fn ~args (let [nodes# (memo-html-resource ~source)]
+                          (flatmap (transformation ~@forms) nodes#))))))
 
 ;;; Thanks to Chouser for this regex
 (defn expand-links 
-  "Return an HTML string with links expanded into anchor tags."
-  [s] 
-  (str2/replace (xml-str s) 
-                #"(\w+://.*?)([.>]*(?: |$))" 
-                (fn [[_ url etc]] (str "<a href='" url "'>" url "</a>" etc))))
+  "Return a seq of nodes with links expanded into anchor tags."
+  [s]
+  (when s
+    (for [x (str/re-partition #"(\w+://.*?)([.>]*(?: |$))" s)]
+      (if (vector? x)
+        [{:tag :a :attrs {:href (x 1)} :content [(x 1)]} (x 2)]
+        x))))
 
-(deftemplate page (template-for *layout-file*)
+(deftemplate page *layout-file*
   [title prefix master-toc local-toc page-content]
   [:html :head :title] (content title)
   [:link] #(apply (set-attr :href (str prefix (:href (:attrs %)))) [%])
@@ -230,32 +232,35 @@ actually changed). This reduces the amount of random doc file changes that happe
 ;;; TODO: factor out var from namespace and sub-namespace into a separate template.
 (defn var-details [ns v template]
   (at template 
-    [:.var-tag] 
     (do->
      (set-attr :id (var-tag-name ns v))
-     (content (:name v)))
-    [:span.var-type] (content (:var-type v))
-    [:pre.var-usage] (content (var-usage v))
-    [:pre.var-docstr] (html-content (expand-links (:doc v)))
-    [:a.var-source] (set-attr :href (var-src-link v))))
+     (content (:name v)))))
 
-(declare render-namespace-api)
+(declare common-namespace-api)
+
+(deffragment render-sub-namespace-api *sub-namespace-api-file*
+ [ns external-docs]
+  (common-namespace-api ns external-docs))
+
+(deffragment render-namespace-api *namespace-api-file*
+ [ns external-docs]
+  (common-namespace-api ns external-docs))
 
 (defn make-ns-content [ns external-docs]
-  (render-namespace-api *namespace-api-file* ns external-docs))
+  (render-namespace-api ns external-docs))
 
-(defn render-namespace-api [template-file ns external-docs]
-  (with-template template-file
-    [:.namespace-name] (content (:short-name ns))
-    [:span.author] (content (or (:author ns) "Unknown"))
-    [:span.long-name] (content (:full-name ns))
-    [:pre.namespace-docstr] (html-content (expand-links (:doc ns)))
-    [:span.see-also] (see-also-links ns)
-    [:span.external-doc] (external-doc-links ns external-docs)
-    [:div.var-entry] (clone-for [v (:members ns)] #(var-details ns v %))
-    [:div.sub-namespaces]
-    (clone-for [sub-ns (:subspaces ns)]
-      (fn [_] (render-namespace-api *sub-namespace-api-file* sub-ns external-docs)))))
+(defn common-namespace-api [ns external-docs]
+  (fn [node]
+    (at node
+      [:.namespace-name] (content (:short-name ns))
+      [:span.author] (content (or (:author ns) "Unknown"))
+      [:span.long-name] (content (:full-name ns))
+      [:pre.namespace-docstr] (html-content (expand-links (:doc ns)))
+      [:span.see-also] (see-also-links ns)
+      [:span.external-doc] (external-doc-links ns external-docs)
+      [:div.var-entry] (clone-for [v (:members ns)] #(var-details ns v %))
+      [:div.sub-namespaces]
+        (substitute (map #(render-sub-namespace-api % external-docs) (:subspaces ns))))))
 
 (defn make-ns-page [ns master-toc external-docs]
   (create-page (ns-html-file ns)
@@ -357,8 +362,9 @@ vars in ns-info that begin with that letter"
 (defn make-index-json
   "Generate a json formatted index file that can be consumed by other tools"
   [ns-info]
-  (with-out-writer (BufferedWriter. (FileWriter. (str *output-directory* *index-json-file*)))
-    (print-json (structured-index ns-info))))
+  (when *build-json-index*
+    (with-out-writer (BufferedWriter. (FileWriter. (str *output-directory* *index-json-file*)))
+                     (print-json (structured-index ns-info)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

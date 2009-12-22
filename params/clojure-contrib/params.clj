@@ -14,6 +14,7 @@
 (def *clojure-contrib-classes* (str *src-dir* "classes/"))
 
 (def *namespaces-to-document* ["clojure.contrib"])
+(def *trim-prefix* "clojure.contrib.")
 
 (def *load-except-list* 
      [ 
@@ -25,6 +26,8 @@
       #"/javadoc"
       #"/jmx/Bean"
       ])
+
+(def *build-json-index* true)
 
 (def *page-title* "Clojure-contrib")
 (def *copyright* "Copyright 2007-2009 by Rich Hickey and the various contributors")

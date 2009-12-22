@@ -24,9 +24,11 @@
 (def *built-clojure-jar* nil)
 
 (def *namespaces-to-document* nil)
+(def *trim-prefix* nil)
 
 (def *do-load* true)
 (def *load-except-list* [])
+(def *build-json-index* false)
 
 (def *page-title* "Undefined Title")
 (def *copyright* "No copyright info")

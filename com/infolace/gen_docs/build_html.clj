@@ -159,7 +159,7 @@ specific directory first, then in the base template directory."
      (set-attr :href (ns-html-file ns))
      (content (:short-name ns)))
     ;; [:.namespace-docstr] (html-content (expand-links (:doc ns)))
-    [:.namespace-docstr] (html-content (:doc ns))
+    [:.namespace-docstr] (content (:doc ns))
     [:.var-link] (add-ns-vars ns)
     [:.subspace] (if-let [subspaces (seq (:subspaces ns))]
                        (clone-for [s subspaces]
@@ -240,7 +240,7 @@ actually changed). This reduces the amount of random doc file changes that happe
     [:.var-type] (content (:var-type v))
     [:.var-usage] (content (var-usage v))
     ;; [:.var-docstr] (content (expand-links (:doc v))
-    [:.var-docstr] (html-content (:doc v))
+    [:.var-docstr] (content (:doc v))
     [:.var-source] (set-attr :href (var-src-link v))))
 
 (declare common-namespace-api)
@@ -263,7 +263,7 @@ actually changed). This reduces the amount of random doc file changes that happe
       [:.author] (content (or (:author ns) "Unknown"))
       [:.long-name] (content (:full-name ns))
       ;; [:.namespace-docstr] (html-content (expand-links (:doc ns)))
-      [:.namespace-docstr] (html-content (:doc ns))
+      [:.namespace-docstr] (content (:doc ns))
       [:.see-also] (see-also-links ns)
       [:.external-doc] (external-doc-links ns external-docs)
       [:.var-entry] (clone-for [v (:members ns)] #(var-details ns v %))

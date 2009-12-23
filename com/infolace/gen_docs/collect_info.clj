@@ -40,26 +40,38 @@ either :code or :text and :strs is a vector of the lines of text in that block."
       (if (< 0 (count line))
         (let [ch (string/get line 0)
               type (if (or (Character/isWhitespace ch) (= \( ch))
-                         :code
-                         :text)
+                         :pre
+                         :p)
               new-ret (if (= type last-type)
-                        (update-in ret [(dec (count ret)) :strs] conj line)
-                        (conj ret {:type type :strs [line]}))]
+                        (update-in ret [(dec (count ret)) :content] conj line)
+                        (conj ret {:tag type :attr {} :content [line]}))]
           (recur new-ret (next lines) type))
         (recur ret (next lines) :blank))
       ret)))
+
+;;; Thanks to Chouser for this regex
+(defn expand-links
+  "Return a seq of nodes with links expanded into anchor tags."
+  [s]
+  (when s
+    (for [x (string/partition s #"(\w+://.*?)([.>]*(?: |$))")]
+      (if (vector? x)
+        [{:tag :a :attrs {:href (x 1)} :content [(x 1)]} (x 2)]
+        x))))
 
 (defn wrap-code-blocks
   "Using structure created from create-line-structure, araps each block in <p>
 or <pre> tags depending on its type."
   [data]
   (let [blocks (map (fn [d]
-                      (if (= (:type d) :text)
-                        (str "<p>" (apply str (interpose " " (:strs d))) "</p>")
-                        (str "<pre>" (apply str (interpose "\n" (:strs d))) "</pre>"))
+                      (if (= (:tag d) :p)
+                        (assoc d :content [(expand-links (apply str (interpose " " (:content d))))])
+                        (assoc d :content [(expand-links (apply str (interpose "\n" (:content d))))]))
                       )
                  data)]
-    (apply str (interpose "\n" blocks))))
+    ;(apply str (interpose "\n" blocks))
+    blocks
+    ))
 
 (defn clean-doc
   "Clean up the docstring by removing whitespace and putting markup around running
@@ -70,7 +82,10 @@ text and code blocks."
           structure (create-line-structure lines)
           wrapped (wrap-code-blocks structure)
         ]
-      wrapped)))
+      (if wrapped
+        wrapped
+        {:tag :p :content ["this is text"]}
+      ))))
 
 (defn var-type 
   "Determing the type (var, function, macro) of a var from the metadata and

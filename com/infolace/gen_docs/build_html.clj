@@ -75,11 +75,11 @@ specific directory first, then in the base template directory."
   [title prefix master-toc local-toc page-content]
   [:html :head :title] (content title)
   [:link] #(apply (set-attr :href (str prefix (:href (:attrs %)))) [%])
-  [:a#page-header] (content *page-title*)
-  [:div#leftcolumn] (content master-toc)
-  [:div#right-sidebar] (content local-toc)
-  [:div#content-tag] (content page-content)
-  [:div#copyright] (content *copyright*))
+  [:#page-header] (content *page-title*)
+  [:#leftcolumn] (content master-toc)
+  [:#right-sidebar] (content local-toc)
+  [:#content-tag] (content page-content)
+  [:#copyright] (content *copyright*))
 
 (defn create-page [output-file title prefix master-toc local-toc page-content]
   (with-out-writer (str *output-directory* output-file) 
@@ -131,7 +131,7 @@ specific directory first, then in the base template directory."
 (defn see-also-links [ns]
   (if-let [see-also (seq (:see-also ns))]
     #(at %
-       [:span.see-also-link] 
+       [:.see-also-link] 
        (clone-for [[link text] (process-see-also (:see-also ns))]
          (fn [t] 
            (at t
@@ -142,7 +142,7 @@ specific directory first, then in the base template directory."
 (defn external-doc-links [ns external-docs]
   (if-let [ns-docs (get external-docs (:short-name ns))]
     #(at %
-       [:span#external-doc-link] 
+       [:#external-doc-link] 
        (clone-for [[link text] ns-docs]
          (fn [t] 
            (at t
@@ -154,21 +154,22 @@ specific directory first, then in the base template directory."
   (at template
     [:.namespace-tag] (set-attr :id (:short-name ns))
     [:.author] (content (or (:author ns) "unknown author"))
-    [:a.api-link] 
+    [:.api-link] 
     (do->
      (set-attr :href (ns-html-file ns))
      (content (:short-name ns)))
-    [:pre.namespace-docstr] (html-content (expand-links (:doc ns)))
-    [:span.var-link] (add-ns-vars ns)
-    [:span.subspace] (if-let [subspaces (seq (:subspaces ns))]
+    ;; [:.namespace-docstr] (html-content (expand-links (:doc ns)))
+    [:.namespace-docstr] (html-content (:doc ns))
+    [:.var-link] (add-ns-vars ns)
+    [:.subspace] (if-let [subspaces (seq (:subspaces ns))]
                        (clone-for [s subspaces]
                          #(at % 
-                            [:span.subspace-name] (content (:short-name s))
-                            [:span.sub-var-link] (add-ns-vars s))))
-    [:span.see-also] (see-also-links ns)))
+                            [:.subspace-name] (content (:short-name s))
+                            [:.sub-var-link] (add-ns-vars s))))
+    [:.see-also] (see-also-links ns)))
 
 (deffragment make-overview-content *overview-file* [ns-info]
-  [:div.namespace-entry] (clone-for [ns ns-info] #(namespace-overview ns %)))
+  [:.namespace-entry] (clone-for [ns ns-info] #(namespace-overview ns %)))
 
 (deffragment make-master-toc *master-toc-file* [ns-info]
   [:ul#left-sidebar-list :li] (clone-for [ns ns-info]
@@ -236,10 +237,11 @@ actually changed). This reduces the amount of random doc file changes that happe
     (do->
      (set-attr :id (var-tag-name ns v))
      (content (:name v)))
-    [:span.var-type] (content (:var-type v))
-    [:pre.var-usage] (content (var-usage v))
-    [:pre.var-docstr] (content (expand-links (:doc v)))
-    [:a.var-source] (set-attr :href (var-src-link v))))
+    [:.var-type] (content (:var-type v))
+    [:.var-usage] (content (var-usage v))
+    ;; [:.var-docstr] (content (expand-links (:doc v))
+    [:.var-docstr] (html-content (:doc v))
+    [:.var-source] (set-attr :href (var-src-link v))))
 
 (declare common-namespace-api)
 
@@ -258,13 +260,14 @@ actually changed). This reduces the amount of random doc file changes that happe
   (fn [node]
     (at node
       [:.namespace-name] (content (:short-name ns))
-      [:span.author] (content (or (:author ns) "Unknown"))
-      [:span.long-name] (content (:full-name ns))
-      [:pre.namespace-docstr] (html-content (expand-links (:doc ns)))
-      [:span.see-also] (see-also-links ns)
-      [:span.external-doc] (external-doc-links ns external-docs)
-      [:div.var-entry] (clone-for [v (:members ns)] #(var-details ns v %))
-      [:div.sub-namespaces]
+      [:.author] (content (or (:author ns) "Unknown"))
+      [:.long-name] (content (:full-name ns))
+      ;; [:.namespace-docstr] (html-content (expand-links (:doc ns)))
+      [:.namespace-docstr] (html-content (:doc ns))
+      [:.see-also] (see-also-links ns)
+      [:.external-doc] (external-doc-links ns external-docs)
+      [:.var-entry] (clone-for [v (:members ns)] #(var-details ns v %))
+      [:.sub-namespaces]
         (substitute (map #(render-sub-namespace-api % external-docs) (:subspaces ns))))))
 
 (defn make-ns-page [ns master-toc external-docs]
@@ -314,12 +317,12 @@ vars in ns-info that begin with that letter"
 
 ;; TODO: skip entries for letters with no members
 (deffragment make-index-content *index-html-file* [vars-by-letter]
-  [:span.project-name-span] (content *page-title*)
-  [:div.index-body] (clone-for [[letter vars] vars-by-letter]
+  [:.project-name-span] (content *page-title*)
+  [:.index-body] (clone-for [[letter vars] vars-by-letter]
                       #(at %
                          [:h2] (set-attr :id letter)
-                         [:span.section-head] (content letter)
-                         [:span.section-content] (clone-for [[v ns] vars]
+                         [:.section-head] (content letter)
+                         [:.section-content] (clone-for [[v ns] vars]
                                                    (gen-index-line v ns)))))
 
 (defn make-index-html [ns-info master-toc]

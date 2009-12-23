@@ -1,4 +1,5 @@
 (ns com.infolace.gen-docs.collect-info
+  (:require [clojure.contrib.str-utils2 :as string])
   (:use [clojure.contrib.pprint.utilities :only [prlabel]]
         [com.infolace.gen-docs.params :only (*namespaces-to-document* *trim-prefix*)]))
 
@@ -26,6 +27,51 @@ string, which looks nasty when you display it."
         (apply str (interpose "\n" (map #(.replaceAll % regex "") lines)))
         s))))
 
+
+(defn create-line-structure
+  "For each line in doc, decides if it's part of a code block or running text.
+Creates a vector of maps in the form of {:type :code :strs []} where :type is
+either :code or :text and :strs is a vector of the lines of text in that block."
+  [l]
+  (loop [ret []
+         [line :as lines] l
+         last-type :blank]
+    (if lines
+      (if (< 0 (count line))
+        (let [ch (string/get line 0)
+              type (if (or (Character/isWhitespace ch) (= \( ch))
+                         :code
+                         :text)
+              new-ret (if (= type last-type)
+                        (update-in ret [(dec (count ret)) :strs] conj line)
+                        (conj ret {:type type :strs [line]}))]
+          (recur new-ret (next lines) type))
+        (recur ret (next lines) :blank))
+      ret)))
+
+(defn wrap-code-blocks
+  "Using structure created from create-line-structure, araps each block in <p>
+or <pre> tags depending on its type."
+  [data]
+  (let [blocks (map (fn [d]
+                      (if (= (:type d) :text)
+                        (str "<p>" (apply str (interpose " " (:strs d))) "</p>")
+                        (str "<pre>" (apply str (interpose "\n" (:strs d))) "</pre>"))
+                      )
+                 data)]
+    (apply str (interpose "\n" blocks))))
+
+(defn clean-doc
+  "Clean up the docstring by removing whitespace and putting markup around running
+text and code blocks."
+  [s]
+  (when-let [clean (remove-leading-whitespace s)]
+    (let [lines (.split clean "\\n")
+          structure (create-line-structure lines)
+          wrapped (wrap-code-blocks structure)
+        ]
+      wrapped)))
+
 (defn var-type 
   "Determing the type (var, function, macro) of a var from the metadata and
 return it as a string."
@@ -43,7 +89,7 @@ return it as a string."
   (for [v (vars-for-ns ns)] 
     (merge (select-keys (meta v) [:arglists :file :line])
            {:name (name (:name (meta v)))
-            :doc (remove-leading-whitespace (:doc (meta v))),
+            :doc (clean-doc (:doc (meta v))),
             :var-type (var-type v)})))
 
 (defn add-vars [ns-info]
@@ -91,7 +137,7 @@ have the same prefix followed by a . and then more components"
 
 (defn build-ns-entry [ns]
   {:full-name (name (ns-name ns)) :short-name (ns-short-name ns)
-   :doc (remove-leading-whitespace (:doc (meta ns))) :author (:author (meta ns))
+   :doc (clean-doc (:doc (meta ns))) :author (:author (meta ns))
    :see-also (:see-also (meta ns)) :ns ns})
 
 (defn build-ns-list [nss]
